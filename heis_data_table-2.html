@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combined HEIs Data Table</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f9f9fa; color: #333; }
+        h1 { font-size: 1.5rem; color: #2c3e50; margin-bottom: 5px; }
+        .subtitle-link { display: inline-block; margin-bottom: 20px; color: #3498db; text-decoration: none; font-size: 0.95rem; font-weight: 500; }
+        .subtitle-link:hover { text-decoration: underline; color: #2980b9; }
+        
+        .controls-container { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .controls-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px; }
+        .action-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+        button { background-color: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
+        button:hover { background-color: #2980b9; }
+        .btn-outline { background-color: white; color: #3498db; border: 1px solid #3498db; }
+        .btn-outline:hover { background-color: #f0f8ff; }
+        .btn-outline.active { background-color: #3498db; color: white; }
+        .btn-success { background-color: #10b981; }
+        .btn-success:hover { background-color: #059669; }
+        
+        .legend-container { display: flex; gap: 15px; font-size: 0.85rem; align-items: center; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 16px; height: 16px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,0.1); }
+
+        /* Filter Section */
+        .filter-section { border-top: 1px solid #eee; padding-top: 15px; margin-top: 5px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 0.85rem; font-weight: 600; color: #475569; }
+        .form-select { padding: 8px 12px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 0.9rem; background-color: white; min-width: 180px; outline: none; cursor: pointer; }
+        .form-select:focus { border-color: #3498db; }
+
+        /* Collapsible Section */
+        .collapsible-container { border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; margin-top: 15px; width: 100%; }
+        .collapsible-header { background: #f1f5f9; padding: 10px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+        .collapsible-header:hover { background: #e2e8f0; }
+        .column-selectors { padding: 10px; display: none; flex-wrap: wrap; gap: 10px; border-top: 1px solid #e2e8f0; }
+        .column-selectors.open { display: flex; }
+        .column-selectors label { display: flex; align-items: center; font-size: 0.85rem; background: #f8fafc; padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer; }
+        .column-selectors label:hover { background: #e2e8f0; }
+        .column-selectors input { margin-right: 6px; cursor: pointer; }
+
+        /* Sticky Table Styles */
+        .table-container { overflow-x: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-height: 70vh; }
+        table { border-collapse: separate; border-spacing: 0; width: 100%; text-align: left; font-size: 0.9rem; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid #eee; border-right: 1px solid #eee; white-space: nowrap; }
+        th { background-color: #1e293b; color: white; position: sticky; top: 0; z-index: 20; cursor: pointer; user-select: none; }
+        th:hover { background-color: #334155; }
+        th.sort-asc::after { content: " ▲"; font-size: 0.8em; color: #cbd5e1; }
+        th.sort-desc::after { content: " ▼"; font-size: 0.8em; color: #cbd5e1; }
+        tr:hover td { background-color: #f1f5f9; }
+        
+        /* Sticky Column (Institution) */
+        td:first-child, th:first-child { position: sticky; left: 0; background-color: #f8fafc; z-index: 10; font-weight: bold; border-right: 2px solid #cbd5e1; }
+        th:first-child { background-color: #1e293b; z-index: 30; }
+        tr:hover td:first-child { background-color: #e2e8f0; }
+
+        /* Info icon styling */
+        .info-icon { display: inline-block; margin-left: 6px; color: #94a3b8; font-weight: normal; font-size: 1.1em; cursor: help; transition: color 0.2s; }
+        th .info-icon:hover { color: #fff; }
+
+        /* Quartiles */
+        .q-1 { background-color: #d1fae5 !important; color: #065f46; font-weight: 500; } /* Green */
+        .q-2 { background-color: #fef08a !important; color: #854d0e; font-weight: 500; } /* Yellow */
+        .q-3 { background-color: #fed7aa !important; color: #9a3412; font-weight: 500; } /* Orange */
+        .q-4 { background-color: #fee2e2 !important; color: #991b1b; font-weight: 500; } /* Red */
+
+        /* Modals */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background-color: #fff; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .modal-header h2 { margin: 0; font-size: 1.2rem; color: #1e293b; }
+        .close-modal { font-size: 1.5rem; cursor: pointer; color: #64748b; }
+        .modal-actions { display: flex; gap: 10px; margin-bottom: 15px; }
+        .modal-body { overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; padding-right: 10px; line-height: 1.5; color: #475569; }
+        .modal-body label { display: flex; align-items: center; cursor: pointer; padding: 8px; }
+        .modal-body label:hover { background-color: #f1f5f9; border-radius: 4px; }
+        .modal-footer { text-align: right; border-top: 1px solid #eee; padding-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <h1>Advancing Institutional Maturity: Sustainable Growth</h1>
+    <a href="https://www.uel.ac.uk/advancing-institutional-maturity" target="_blank" class="subtitle-link">Origin of data and analysis: Advancing Institutional Maturity (UEL) ↗</a>
+    
+    <div class="controls-container">
+        <div class="controls-header">
+            <div class="legend-container">
+                <span class="legend-item"><span class="legend-color q-1"></span> Top Quartile (Green)</span>
+                <span class="legend-item"><span class="legend-color q-2"></span> 2nd Quartile (Yellow)</span>
+                <span class="legend-item"><span class="legend-color q-3"></span> 3rd Quartile (Orange)</span>
+                <span class="legend-item"><span class="legend-color q-4"></span> Bottom Quartile (Red)</span>
+            </div>
+            <div class="action-buttons">
+                <button id="transposeBtn" style="display:none;"> Transpose Table</button>
+                <button id="downloadCsvBtn" class="btn-success">Download CSV</button>
+                <button id="uploadCsvBtn" style="display:none;" class="btn-success">Upload CSV</button>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="filterType">Institution Group:</label>
+                <div style="display: flex; align-items: center;">
+                    <select id="filterType" class="form-select">
+                        <option value="All">All Institutions</option>
+                        <option value="Russell Group">Russell Group Only</option>
+                        <option value="Non-Russell Group">Non-Russell Group Only</option>
+                        <option value="Custom">Custom Selection...</option>
+                    </select>
+                    <button id="editCustomListBtn" class="btn-outline" style="display:none; margin-left: 8px; padding: 7px 12px; font-size: 0.8rem;">Edit List</button>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label for="filterIncome">Income Category:</label>
+                <select id="filterIncome" class="form-select">
+                    <option value="All">All Categories</option>
+                    <option value=">£1bn">>£1bn</option>
+                    <option value="£101m-£999m">£101m-£999m</option>
+                    <option value="<£100m"><£100m</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filterGrowth">Sustainable Growth Category ⓘ</label>
+                <select id="filterGrowth" class="form-select" title="Calculated based on Quartiles achieved in YAGO Growth, Compound Growth, and Surplus % Income">
+                    <option value="All">All Categories</option>
+                    <option value="First category">First category</option>
+                    <option value="Second category">Second category</option>
+                    <option value="Third category">Third category</option>
+                    <option value="Fourth category">Fourth category</option>
+                </select>
+            </div>
+
+            <div class="collapsible-container">
+                <div class="collapsible-header" id="toggleColumns">Columns to Display ▼</div>
+                <div class="column-selectors" id="columnSelectors"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table id="dataTable">
+            <thead id="dataHead"></thead>
+            <tbody id="dataBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Row Selection Modal -->
+    <div id="rowModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Select Custom Institutions</h2>
+                <span class="close-modal" id="closeRowModal">&times;</span>
+            </div>
+            <div class="modal-actions">
+                <button id="selectAllBtn" class="btn-outline">Select All</button>
+                <button id="unselectAllBtn" class="btn-outline">Unselect All</button>
+            </div>
+            <div class="modal-body" id="rowSelectors"></div>
+            <div class="modal-footer">
+                <button id="applyRowsBtn">Apply Custom Filter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metric Explainer Modal -->
+    <div id="explainerModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="explainerTitle">Metric Name</h2>
+                <span class="close-modal" id="closeExplainerModal">&times;</span>
+            </div>
+            <div class="modal-body" id="explainerText"></div>
+            <div class="modal-footer">
+                <button id="okExplainerBtn">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const metricExplainers = {
+            "Institution": "The higher education provider, typically registered with the Office for Students (OfS) in England, or the relevant funding body in Scotland, Wales, or Northern Ireland.",
+            "Income Category": "Groups UK universities by their total annual income, reflecting the diverse scale of institutions from specialist providers to major research-intensive Russell Group universities.",
+            "YAGO Growth": "Year-Ago Growth: The percentage change in total income from the previous financial year.",
+            "Compound Growth": "The Compound Annual Growth Rate (CAGR) of income over recent years, smoothing out single-year volatility.",
+            "RCI": "Revenue Concentration Index: Measures reliance on a single income source. A lower score implies greater financial resilience.",
+            "MCR": "Marginal Cost Ratio: Compares changes in expenditure to changes in income.",
+            "Staff costs %": "Staff costs as a percentage of total income. Typically the largest expenditure for a UK university.",
+            "Income/FTE": "Total income generated per Full-Time Equivalent (FTE) staff member.",
+            "Cashflow % income": "Net operating cashflow as a proportion of total consolidated income.",
+            "Cashflow": "The absolute net cash generated from operating activities, as reported in the institution's statement of cash flows.",
+            "Liquidity days": "Operating days cost cover. The number of days a university can cover its typical operating expenditure using available cash.",
+            "Surplus % income": "The financial surplus (or deficit) as a percentage of total income.",
+            "2020 Income": "The total consolidated income reported for the 2019/20 academic year, serving as a baseline.",
+            "2025 Income": "The total consolidated income reported or projected for the 2024/25 academic year.",
+            "FTE Staff": "The estimated number of Full-Time Equivalent staff employed by the institution, calculated by dividing the 2025 Income by the Income/FTE metric.",
+            "Surplus £": "The estimated absolute financial surplus or deficit in pounds, calculated by applying the Surplus % to the 2025 Income."
+        };
+
+        const baseHeaders = ["Institution", "Income Category", "YAGO Growth", "Compound Growth", "RCI", "MCR", "Staff costs %", "Income/FTE", "Cashflow % income", "Cashflow", "Liquidity days", "Surplus % income", "2020 Income", "2025 Income"];
+        const generatedHeaders = ["FTE Staff", "Surplus £"];
+        const headers = [...baseHeaders, ...generatedHeaders];
+
+        // Comprehensive list of Russell Group universities for filtering
+        const russellGroupList = [
+            "Cardiff University", "Durham University", "University of Durham", "University of Durham**",
+            "Imperial College London", "King's College London", 
+            "London School of Economics and Political Science (LSE)", "London School of Economics and Political Science", "London School of Economics & Political Science", 
+            "Newcastle University", "University of Newcastle",
+            "Queen Mary University of London", "Queen's University Belfast",
+            "University College London (UCL)", "University College London",
+            "University of Birmingham", "University of Bristol", "University of Cambridge",
+            "University of Edinburgh", "The University of Edinburgh", 
+            "University of Exeter", "University of Glasgow",
+            "University of Leeds", "University of Liverpool", 
+            "University of Manchester", "The University of Manchester",
+            "University of Nottingham", "University of Oxford", 
+            "University of Sheffield", "The University of Sheffield", 
+            "University of Southampton", "University of Warwick", "University of York",
+            "University of St. Andrews"
+        ];
+
+        // Raw Data Inputs - Full compiled list
+        let rawDataInputs = [
+            ["Goldsmiths, University of London","£101m-£999m","1.26%","1.19%","0.34","0.57","60.77%","£113,577","5.23%","£7,300,000","139","2.86%","£130,123,000","£139,700,000","1,230","£3,995,420"],
+["Heriot-Watt University","£101m-£999m","5.52%","4.96%","0.32","1.23","52.33%","£122,673","5.64%","£17,400,000","94","-2.66%","£230,690,000","£308,400,000","2,514","-£8,203,440"],
+["Keele University","£101m-£999m","3.00%","4.55%","0.35","1.68","52.27%","£109,948","3.84%","£8,200,000","32","1.22%","£163,314,000","£213,300,000","1,940","£2,602,260"],
+["Kingston University","£101m-£999m","3.09%","3.51%","0.35","0.86","53.74%","£127,353","8.98%","£22,000,000","174","2.69%","£199,076,000","£244,900,000","1,923","£6,587,810"],
+["London Business School","£101m-£999m","7.66%","5.49%","0.42","1.05","48.39%","£251,996","3.17%","£7,200,000","75","7.44%","£164,934,000","£227,300,000","902","£16,911,120"],
+["London School of Economics & Political Science","£101m-£999m","4.25%","4.66%","0.34","1.23","53.17%","£155,029","11.02%","£61,000,000","173","15.13%","£420,906,000","£553,300,000","3,569","£83,714,290"],
+["Queen's University Belfast","£101m-£999m","3.63%","4.45%","0.35","1.92","67.56%","£108,705","-6.84%","-£33,500,000","86","-14.59%","£376,997,000","£489,500,000","4,503","-£71,418,050"],
+["Royal Holloway University of London","£101m-£999m","2.33%","2.95%","0.31","1.40","57.85%","£122,228","11.25%","£25,300,000","174","2.76%","£188,941,000","£224,900,000","1,840","£6,207,240"],
+["Durham University","£101m-£999m","3.82%","5.58%","0.28","1.57","56.71%","£108,889","4.29%","£22,900,000","53","0.36%","£385,598,000","£534,100,000","4,905","£1,922,760"],
+["Cardiff University","£101m-£999m","-2.21%","1.84%","0.27","2.32","59.08%","£104,175","-1.95%","-£12,364,000","236","-9.02%","£568,812,000","£634,741,000","6,093","-£57,253,638"],
+["The University of Sheffield","£101m-£999m","-5.01%","2.40%","0.28","2.13","56.17%","£109,029","3.94%","£33,500,000","191","0.58%","£737,556,000","£850,100,000","7,797","£4,930,580"],
+["Newcastle University","£101m-£999m","0.34%","2.66%","0.26","1.66","58.74%","£105,221","5.04%","£32,100,000","115","-0.09%","£544,232,000","£636,900,000","6,053","-£573,210"],
+["University of Oxford",">£1bn","-1.08%","2.95%","0.44","1.55","46.01%","£150,849","0.14%","£4,200,000","114","16.93%","£2,585,312,000","£3,021,200,000","20,028","£511,489,160"],
+["University of Nottingham","£101m-£999m","1.49%","3.28%","0.27","2.30","57.77%","£105,263","3.20%","£27,600,000","24","-8.91%","£710,494,000","£862,100,000","8,190","-£76,813,110"],
+["University of Leeds","£101m-£999m","-5.27%","3.89%","0.27","1.59","57.52%","£106,745","1.07%","£10,700,000","188","-1.12%","£794,051,000","£998,600,000","9,355","-£11,184,320"],
+["University of Liverpool","£101m-£999m","2.54%","3.93%","0.27","1.36","59.53%","£110,229","7.79%","£56,600,000","98","1.68%","£576,488,000","£726,300,000","6,589","£12,201,840"],
+["University of Southampton","£101m-£999m","-0.54%","4.22%","0.27","1.55","56.43%","£112,119","5.82%","£43,500,000","317","4.68%","£583,344,000","£747,500,000","6,667","£34,983,000"],
+["University of Cambridge",">£1bn","1.11%","4.23%","0.47","1.22","47.33%","£132,148","0.93%","£24,800,000","216","10.80%","£2,074,890,000","£2,660,000,000","20,129","£287,280,000"],
+["The University of Edinburgh",">£1bn","2.98%","4.63%","0.36","1.49","56.17%","£110,998","3.56%","£52,600,000","96","1.36%","£1,125,321,000","£1,476,600,000","13,303","£20,081,760"],
+["University of St. Andrews","£101m-£999m","7.99%","4.83%","0.34","1.12","51.40%","£111,100","5.10%","£17,700,000","27","7.75%","£261,673,000","£347,300,000","3,126","£26,915,750"],
+["The University of Manchester",">£1bn","4.19%","4.95%","0.27","1.09","51.76%","£120,172","8.93%","£127,000,000","168","6.82%","£1,064,196,000","£1,422,000,000","11,833","£96,980,400"],
+["King's College London",">£1bn","8.42%","6.11%","0.28","1.14","58.17%","£141,684","5.69%","£77,000,000","93","4.17%","£964,175,000","£1,376,600,000","9,716","£57,404,220"],
+["University College London",">£1bn","6.68%","6.19%","0.29","1.16","52.62%","£155,644","11.33%","£250,800,000","125","4.70%","£1,543,741,000","£2,213,100,000","14,219","£104,015,700"],
+["Queen Mary University of London","£101m-£999m","2.16%","6.27%","0.26","1.16","55.83%","£135,830","5.95%","£43,900,000","175","6.26%","£512,462,000","£738,100,000","5,434","£46,205,060"],
+["Imperial College London",">£1bn","12.27%","6.44%","0.30","0.93","51.43%","£169,942","8.76%","£130,700,000","104","9.51%","£1,026,365,000","£1,492,600,000","8,783","£141,946,260"],
+["University of Exeter","£101m-£999m","2.39%","6.44%","0.26","1.31","58.25%","£107,077","9.78%","£66,600,000","127","0.19%","£468,309,000","£680,900,000","6,359","£1,293,710"],
+["University of Birmingham",">£1bn","15.58%","6.50%","0.26","1.19","52.38%","£123,042","9.89%","£108,000,000","86","0.55%","£748,579,000","£1,092,000,000","8,875","£6,006,000"],
+["University of York","£101m-£999m","4.08%","6.68%","0.28","1.07","55.70%","£119,672","6.50%","£30,500,000","117","4.97%","£376,482,000","£554,800,000","4,636","£27,573,560"],
+["University of Glasgow",">£1bn","9.49%","724%","0.30","1.10","50.30%","£132:642","4.10%","£43,000,000","225","7.85%","£690,106,000","£1,049,600,000","7,913","£82,393,600"],
+["University of Bristol",">£1bn","9.23%","9.12%","0.27","1.03","44.98%","£131,717","9.15%","£109,100,000","61","5.77%","£706,626,000","£1,192,700,000","9,055","£68,818,790"],
+["Anglia Ruskin University","£101m-£999m","-6.55%","6.77%","0.36","0.83","49.79%","£125,272","6.33%","£22,600,000","81","3.53%","£240,844,000","£356,900,000","2,849","£12,598,570"],
+["Aston University","£101m-£999m","3.19%","6.01%","0.30","1.31","54.67%","£121,503","10.53%","£24,700,000","84","1.79%","£165,195,000","£234,500,000","1,930","£4,197,550"],
+["Cardiff Metropolitan University","£101m-£999m","2.58%","5.61%","0.38","0.93","67.23%","£89,518","3.23%","£4,800,000","115","-2.62%","£107,124,000","£148,600,000","1,660","-£3,893,320"],
+["SOAS University of London","£101m-£999m","2.03%","4.50%","0.28","1.13","59.60%","£114,950","7.24%","£8,400,000","138","7.15%","£89,162,000","£116,100,000","1,010","£8,301,150"],
+["Teesside University","£101m-£999m","-7.93%","5.24%","0.31","0.99","58.24%","£101,388","5.87%","£12,000,000","97","1.91%","£150,550,000","£204,500,000","2,017","£3,905,950"],
+["Ulster University","£101m-£999m","3.78%","5.99%","0.38","1.44","57.63%","£108,682","-2.66%","-£8,100,000","147","-5.65%","£214,619,000","£304,200,000","2,799","-£17,187,300"],
+["University of Bradford","£101m-£999m","-10.44%","4.26%","0.31","1.74","62.89%","£101,409","-7.23%","-£10,400,000","55","-9.10%","£112,018,000","£143,900,000","1,419","-£13,094,900"],
+["University of Chester","£101m-£999m","4.54%","4.30%","0.34","0.50","53.96%","£107,832","2.72%","£4,200,000","101","7.72%","£119,754,000","£154,200,000","1,430","£11,904,240"],
+["University of Greenwich","£101m-£999m","0.92%","7.54%","0.33","0.83","48.09%","£111,316","13.59%","£45,200,000","206","8.15%","£214,919,000","£332,500,000","2,987","£27,098,750"],
+["University of Hertfordshire","£101m-£999m","2.58%","8.02%","0.36","0.96","49.10%","£125,849","-0.40%","-£1,700,000","93","0.14%","£270,552,000","£429,900,000","3,416","£601,860"],
+["University of Lancashire","£101m-£999m","3.07%","3.70%","0.32","0.80","60.53%","£101,880","2.01%","£6,100,000","99","-21.52%","£243,992,000","£303,500,000","2,979","-£65,313,200"],
+["University of Northampton","£101m-£999m","-14.72%","4.41%","0.36","0.62","52.97%","£124,372","4.59%","£7,500,000","148","1.29%","£126,035,000","£163,300,000","1,313","£2,106,570"],
+["University of Roehampton","£101m-£999m","3.37%","0.80%","0.34","-0.07","44.08%","£165,927","10.50%","£15,700,000","60","2.07%","£142,510,000","£149,500,000","901","£3,094,650"],
+["University of Strathclyde","£101m-£999m","-0.43%","4.28%","0.33","1.48","57.66%","£95,118","1.18%","£5,100,000","191","-1.58%","£334,821,000","£430,600,000","4,527","-£6,803,480"],
+["Abertay University","<£100m","0.75%","2.70%","0.41","0.78","69.81%","£92,411","-1.21%","-£500,000","214","-1.21%","£35,293,000","£41,400,000","448","-£500,940"],
+["Aberystwyth University","£101m-£999m","0.86%","2.87%","0.32","1.11","56.35%","£95,588","8.95%","£11,400,000","31","-2.35%","£107,534,000","£127,400,000","1,333","-£2,993,900"],
+["Architectural Association School of Architecture","<£100m","4.81%","3.66%","0.63","1.52","55.65%","£107,826","-5.24%","-£1,300,000","170","-0.40%","£19,987,000","£24,800,000","230","-£99,200"],
+["Arts University Bournemouth","<£100m","-5.87%","3.08%","0.41","1.11","48.42%","£113,828","6.70%","£3,464,000","20","-4.44%","£43,087,000","£51,678,000","454","-£2,294,503"],
+["Arts University Plymouth","<£100m","14.95%","0.31%","0.55","-3.29","56.38%","£88,166","4.70%","£700,000","58","3.36%","£14,622,000","£14,900,000","169","£500,640"],
+["Bath Spa University","£101m-£999m","32.00%","21.72%","0.74","0.97","26.09%","£224,895","9.02%","£24,200,000","75","3.47%","£82,495,000","£268,300,000","1,193","£9,310,010"],
+["Birkbeck University of London","<£100m","-3.92%","-1.65%","0.37","-1.57","71.04%","£98,302","-4.17%","-£4,100,000","49","-6.91%","£108,707,000","£98,400,000","1,001","-£6,799,440"],
+["Birmingham City University","£101m-£999m","-0.15%","4.61%","0.41","0.99","56.93%","£113,667","6.79%","£22,800,000","140","1.49%","£266,434,000","£336,000,000","2,956","£5,006,400"],
+["Birmingham Newman University","<£100m","39.67%","12.30%","0.76","0.85","41.72%","£140,708","11.32%","£5,400,000","170","8.60%","£23,785,000","£47,700,000","339","£4,102,200"],
+["Buckinghamshire New University","£101m-£999m","-3.62%","7.88%","0.59","1.05","27.69%","£233,185","8.44%","£15,600,000","123","0.22%","£117,266,000","£184,900,000","793","£406,780"],
+["Canterbury Christ Church University","£101m-£999m","11.78%","19.96%","0.68","0.96","29.86%","£226.620","4.71%","£16,800,000","65","0.81%","£119,688,000","£356,700,000","1,574","£2,889,270"],
+["City St George's, University of London","£101m-£999m","62.39%","12.25%","0.31","0.80","50.39%","£149.618","3.22%","£15,800,000","44","15,65%","£244,991,000","£490,000,000","3,275","£76,685,000"],
+["Cranfield University","£101m-£999m","-0.06%","2.91%","0.32","1.37","53.42%","£119,585","5.81%","£12,300,000","20","-3.70%","£184,651,000","£213,200,000","1,783","-£7,888,400"],
+["De Montfort University","£101m-£999m","-2.56%","0.02%","0.36","109.43","61.45%","£99,530","2.56%","£5,500,000","220","-8.89%","£253,853,000","£254,200,000","2,554","-£22,598,380"],
+["Edge Hill University","£101m-£999m","-1.33%","2.81%","0.53","1.22","72.04%","£85,394","0.21%","£300,000","119","-4.12%","£119,296,000","£140,900,000","1,650","-£5,805,080"],
+["Edinburgh Napier University","£101m-£999m","-7.25%","3.77%","0.42","0.93","65.55%","£101,015","1.69%","£2,700,000","154","-1.26%","£127,516,000","£159,300,000","1,577","-£2,007,180"],
+["Glasgow Caledonian University","£101m-£999m","-4.16%","5.31%","0.41","0.69","59.38%","£119,510","5.36%","£9,200,000","213","7.02%","£125,305,000","£170,900,000","1,430","£11,997,180"],
+["Glasgow School of Art","<£100m","26.41%","2.79%","0.45","0.94","52.15%","£149,136","10.76%","£6,500,000","114","13.08%","£51,212,000","£60,400,000","405","£7,900,320"],
+["Hartpury University","<£100m","6.66%","6.84%","0.49","0.75","53.20%","209.331","15.49%","£9,200,000","47","7.07%","39,934,000£","£59,400,000","284","£4,199,580"],
+["Health Sciences University","<£100m","63.28%","18.52%","0.38","0.93","55.95%","£113,762","11.10%","£2,916,000","136","6.90%","£9,480,000","£26,279,000","231","£1,813,251"],
+["Lancaster University","£101m-£999m","6.52%","4.81%","0.29","114","50.16%","£124,905","9.21%","£39,500,000","151","9:42%","£323,451,000","£428,800,000","3,433","£40,392,960"],
+["Leeds Arts University","<£100m","-1.72%","0.76%","0.55","2.62","63.45%","£90,545","8.43%","£2,100,000","347","5.22%","£23,796,000","£24,900,000","275","£1,299,780"],
+["Leeds Trinity University","<£100m","-12.09%","9.17%","0.67","1.60","74.61%","£83,867","3.19%","£1,968,477","34","-20.17%","£36,406,000","£61,642,000","735","-£12,433,191"],
+["Lincoln Bishop University","<£100m","6.46%","-0.63%","0.55","-3.92","74.39%","£76,502","-13.89%","-£3,029,000","58","-27.99%","£22,652,000","£21,803,000","285","-£6,102,660"],
+["Liverpool Hope University","<£100m","-0.16%","1.94%","0.53","1.75","65.61%","£88,285","1.02%","£581,001","139","-1.85%","£50,671,000","£56,855,000","644","-£1,051,818"],
+["Liverpool Institute for Performing Arts","<£100m","5.15%","2.19%","0.39","2.05","66.00%","£95,541","5.33%","£800,000","75","1.33%","£13,173,000","£15,000,000","157","£199,500"],
+["Liverpool John Moores University","£101m-£999m","-3.70%","1.63%","0.49","1.97","64.47%","£97,935","1.69%","£4,400,000","196","-1.88%","£236,788,000","£260,900,000","2,664","-£4,904,920"],
+["Liverpool School of Tropical Medicine","£101m-£999m","1.16%","-9.03%","0.54","0.90","37.97%","£164,295","3.25%","£4,200,000","259","2.17%","£228,069,000","£129,300,000","787","£2,805,810"],
+["London Metropolitan University","£101m-£999m","-12.15%","6.85%","0.38","1.06","52.47%","£139,921","2.33%","£3,300,000","169","-7.98%","£95,102,000","£141,500,000","1,011","-£11,291,700"],
+["London South Bank University","£101m-£999m","-5.53%","1.02%","0.37","1.79","56.38%","£120,875","1.42%","£2,785,000","7","0.72%","£184,498,000","£196,060,000","1,622","£1,411,632"],
+["Loughborough University","£101m-£999m","6.50%","3.30%","0.29","1.68","53.85%","£109,346","5.76%","£22,900,000","123","1.71%","£327,331,000","£397,800,000","3,638","£6,802,380"],
+["Manchester Metropolitan University","£101m-£999m","-0.20%","4.80%","0.42","0.82","58.70%","£107,963","7.09%","£32,600,000","115","8.03%","£346,896,000","£459,600,000","4,257","£36,905,880"],
+["Middlesex University","£101m-£999m","-2.15%","-1.71%","0.32","0.47","58.06%","£130,597","-2.96%","-£5,700,000","105","-4.05%","£213,466,000","£192,800,000","1,476","-£7,808,400"],
+["National Film and Television School","<£100m","6.38%","8.65%","0.59","0.83","40.00%","£165,563","9.60%","£2,400,000","85","7.60%","£15,196,000","£25,000,000","151","£1,900,000"],
+["New Model in Technology & Engineering (NMiTE)","<£100m","-5.73%","-12.15%","0.72","-0.17","58.15%","£109,412","15.32%","£855,000","84","-22.63%","£12,139,000","£5,580,000","51","-£1,262,754"],
+["Northumbria University","£101m-£999m","-1.17%","5.08%","0.31","1.05","58.52%","£117,654","1.63%","£6,100,000","83","-0.24%","£277,178,000","£373,200,000","3,172","-£895,680"],
+["Norwich University of the Arts","<£100m","-4.76%","4.25%","0.57","1.44","58.65%","£85,950","2.24%","£700,000","307","1.92%","£24,310,000","£31,200,000","363","£599,040"],
+["Nottingham Trent University","£101m-£999m","-8.23%","2.73%","0.44","1.25","66.14%","£92,835","1.63%","£6,500,000","130","-0.50%","£339,131,000","£398,700,000","4,295","-£1,993,500"],
+["Oxford Brookes University","£101m-£999m","12.96%","7.67%","0.39","0.77","40.80%","£161.033","10.32%","£31,939,000","43","5.11%","£198,582,000","£309,345,000","1,921","£15,807,530"],
+["Plymouth Marjon University","<£100m","44.37%","7.52%","0.60","0.70","29.69%","£142,424","28.21%","£4,600,000","57","7.09%","£27,488,000","£87,900,000","617","£6,232,110"],
+["Queen Margaret University","<£100m","-2.16%","4.60%","0.46","1.22","61.74%","£102,632","4.61%","£2,439,000","33","-6.04%","£40,437,000","£52,958,000","516","-£3,198,663"],
+["Ravensbourne University London","<£100m","42.51%","21.38%","0.45","0.92","36.64%","£220,854","10.87%","£24,800,000","268","5,80%","£27,380,000","£42,300,000","192","£2,453,400"],
+["Robert Gordon University","£101m-£999m","-2.53%","4.86%","0.46","0.90","54.77%","£105,889","-3.18%","-£3,929,000","138","-2.37%","£92,863,000","£123,466,000","1,166","-£2,926,144"],
+["Rose Bruford College","<£100m","0.84%","5.53%","0.42","1.05","42.86%","£145,833","2.14%","£300,000","49","1.43%","£10,139,000","£14,000,000","96","£200,200"],
+["Royal Academy of Music","<£100m","-11.48%","4.05%","0.49","1.06","51.51%","£121,168","-4.22%","-£1,400,000","180","15.66%","£26,159,000","£33,200,000","274","£5,199,120"],
+["Royal Agricultural University","<£100m","-2.98%","2.20%","0.44","0.53","56.97%","£87,710","-2.26%","-£458,000","60","-4.78%","£17,786,000","£20,261,000","231","-£968,476"],
+["Royal College of Art","<£100m","-10.58%","4.02%","0.45","1.59","51.85%","£152,496","20.70%","£19,600,000","49","3.48%","£74,758,000","£94,700,000","621","£3,295,560"],
+["Royal College of Music","<£100m","17.09%","6.94%","0.43","0.72","44.70%","£155,556","3.00%","£1,300,000","167","24,65%","£29,016,000","£43,400,000","279","£10,698,100"],
+["Royal Conservatoire of Scotland","<£100m","5.18%","4.11%","0.56","0.74","72.87%","N/A¹","9.53%","£3,076,000","101","6.37%","£25,346,000","£32,273,000","0","£2,055,790"],
+["Royal Veterinary College","£101m-£999m","4.44%","3.55%","0.42","1.54","53.35%","£129,537","11.10%","£14,900,000","152","5.89%","£108,874,000","£134,200,000","1,036","£7,904,380"],
+["Sheffield Hallam University","£101m-£999m","-4.11%","1.32%","0.37","0.82","60.80%","£96,589","1.78%","£5,600,000","125","-1.27%","£290,460,000","£314,300,000","3,254","-£3,991,610"],
+["Sotheby's Institute of Art¹","<£100m","-8.64%","1.78%","0.47","0.24","38.89%","£116,883","-1.11%","-£100,000","121","3.33%","£8,097,000","£9,000,000","77","£299,700"],
+["Southampton Solent University","£101m-£999m","-1.39%","-0.61%","0.41","2.43","46.32%","£119,682","5.90%","£6,016,000","56","1.01%","£105,808,000","£101,969,000","852","£1,029,887"],
+["St Mary's University, Twickenham","<£100m","0.18%","2.34%","0.39","1.30","70.97%","£90,476","2.38%","£1,400,000","42","-6.79%","£51,277,000","£58,900,000","651","-£3,999,310"],
+["Swansea University","£101m-£999m","-12.60%","0.83%","0.30","5.46","62.32%","£96,752","-4.68%","-£15,600,000","104","-11.96%","£317,505,000","£333,600,000","3,448","-£39,898,560"],
+["The Open University","£101m-£999m","-0.65%","3.37%","0.49","1.77","76.40%","£80,191","-5.27%","-£30,500,000","149","-4.67%","£474,144,000","£578,500,000","7,214","-£27,015,950"],
+["Trinity Laban Conservatoire of Music and Dance","<£100m","13.16%","2.03%","0.41","2.60","58.70%","£95,266","-3.73%","-£1,200,000","24","-4.97%","£28,541,000","£32,200,000","338","-£1,600,340"],
+["University College Birmingham","<£100m","6.77%","9.89%","0.34","0.87","50.05%","£122,661","6.87%","£6,400,000","203","6.23%","£52,862,000","£93,100,000","759","£5,800,130"],
+["University for the Creative Arts","£101m-£999m","16.25%","14.22%","0.51","1:09","32.99%","£202,979","-1.53%","-£2,400,000","44","-3.64%","£70,570,000","£156,700,000","772","-£5,703,880"],
+["University of Aberdeen","£101m-£999m","-2.07%","1.52%","0.31","2.83","63.69%","£100,275","5.21%","£13,338,000","109","-0.63%","£233,771,000","£255,903,000","2,552","-£1,612,189"],
+["University of Bath","£101m-£999m","6.79%","5.81%","0.28","1.33","51.57%","£120,340","11.59%","£48,400,000","234","-2.32%","£297,661,000","£417,700,000","3,471","-£9,690,640"],
+["University of Brighton","£101m-£999m","-1.98%","0.77%","0.37","-0.76","61.34%","£98,663","1.64%","£3,400,000","87","-4.21%","£197,371,000","£206,700,000","2,095","-£8,702,070"],
+["University of Chichester","<£100m","-1.50%","3.23%","0.50","0.66","54.52%","£109,211","8.58%","£5,700,000","133","3.01%","£54,878,000","£66,400,000","608","£1,998,640"],
+["University of Cumbria","<£100m","0.04%","5.62%","0.51","0.73","64.62%","£87,780","1.02%","£800,000","93","-1.40%","£56,393,000","£78,300,000","892","-£1,096,200"],
+["University of Derby","£101m-£999m","-6.70%","0.89%","0.41","2.32","62.82%","£96,259","2.01%","£4,100,000","179","-11.06%","£193,812,000","£204,400,000","2,123","-£22,606,640"],
+["University of East Anglia","£101m-£999m","-0.28%","2.17%","0.30","1.94","58.61%","£105,271","7.35%","£25,400,000","83","-6.45%","£303,884,000","£345,700,000","3,284","-£22,297,650"],
+["University of East London","£101m-£999m","6.21%","1141%","0.36","040","42.17%","£191,425","15.76%","£46,800,000","113","5.22%","£155,275,000","£296,900,000","1,551","£15,498,180"],
+["University of Essex","£101m-£999m","-7.54%","2.67%","0.28","2.42","61.90%","£103,968","-1.85%","-£25,450,000","75","-7.55%","£249,738,000","£292,539,000","2,814","-£22,086,694"],
+["University of Gloucestershire","<£100m","-4.77%","1.22%","0.37","0.86","64.04%","£94,683","11.95%","£10,000,000","42","-1.08%","£77,834,000","£83,700,000","884","-£903,960"],
+["University of Greater Manchester","£101m-£999m","13.31%","9.49%","0.37","0.82","48.83%","£115,609","12.93%","£20,500,000","196","3.60%","£91,983,000","£158,500,000","1,371","£5,706,000"],
+["University of Huddersfield","£101m-£999m","-5.45%","-0.10%","0.34","9.64","54.64%","£107,098","15.47%","£26,664,000","319","7.23%","£173,384,000","£172,320,000","1,609","£12,458,736"],
+["University of Hull","£101m-£999m","-2.10%","1.10%","0.29","3.15","56.71%","£117,517","11.94%","£24,200,000","145","-8.54%","£189,681,000","£202,600,000","1,724","-£17,302,040"],
+["University of Leicester","£101m-£999m","2.70%","3.32%","0.27","1.54","57.98%","£101,382","6.51%","£25,800,000","36","-0.86%","£325,713,000","£396,200,000","3,908","-£3,407,320"],
+["University of Lincoln","£101m-£999m","-7.92%","3.95%","0.35","0.95","55.59%","£114,583","4.68%","£10,300,000","65","0.86%","£174,395,000","£220,000,000","1,920","£1,892,000"],
+["University of Plymouth","£101m-£999m","-3.28%","2.85%","0.34","1.09","60.90%","£107,447","10.04%","£27,100,000","155","0.19%","£227,993,000","£269,800,000","2,511","£512,620"],
+["University of Portsmouth","£101m-£999m","-0.81%","1.58%","0.32","0.82","55.59%","£115,438","7.92%","£23,800,000","421","4.92%","£273,553,000","£300,600,000","2,604","£14,789,520"],
+["University of Reading","£101m-£999m","2.81%","2.48%","0.29","1.89","57.70%","£100,748","1.87%","£6,800,000","137","-6.77%","£313,843,000","£363,600,000","3,609","-£24,615,720"],
+["University of Salford","£101m-£999m","0.15%","4.91%","0.38","1.22","55.79%","£100,246","9.23%","£26,300,000","237","4.35%","£213,803,000","£285,000,000","2,843","£12,397,500"],
+["University of South Wales","£101m-£999m","-8.61%","1.85%","0.34","1.02","58.56%","£109,037","-4.50%","-£10,000,000","296","0.90%","£198,832,000","£222,000,000","2,036","£1,998,000"],
+["University of Staffordshire","£101m-£999m","-10.47%","3.33%","0.45","1.03","49.67%","£117,453","9.17%","£13,700,000","143","3.08%","£122,775,000","£149,400,000","1,272","£4,601,520"],
+["University of Stirling","£101m-£999m","-1.64%","6.41%","0.36","1.21","58.00%","£109,919","4.26%","£7,500,000","147","0.68%","£121,339,000","£176,200,000","1,603","£1,198,160"],
+["University of Suffolk","£101m-£999m","-6.67%","10.25%","0.64","1.13","26.80%","£222,882","7.84%","£10,000,000","169","5.96%","£71,054,000","£127,600,000","573","£7,604,960"],
+["University of Sussex","£101m-£999m","-8.43%","1.41%","0.28","3.32","61.06%","£105,510","4.30%","£15,000,000","92","-6.51%","£320,508,000","£348,500,000","3,303","-£22,687,350"],
+["University of the Arts London","£101m-£999m","6.21%","6.69%","0.41","0.88","57.97%","£132,362","6.06%","£30,000,000","83","5.19%","£335,541,000","£494,900,000","3,739","£25,685,310"],
+["University of the Built Environment","<£100m","9.79%","7.44%","0.44","0.72","69.58%","£83.333","2.92%","£700,000","89","7.92%","£15,607,000","£24,000,000","288","£1,900,800"],
+["University of the Highlands and Islands","£101m-£999m","-9.61%","-1.93%","0.78","0.84","12.15%","£525,703","-4.97%","-£6,500,000","36","-1.83%","£147,138,000","£130,900,000","249","-£2,395,470"],
+["University of the West of Scotland","£101m-£999m","-3.37%","4.93%","0.37","1.17","58.78%","£111,354","9.77%","£15,900,000","173","-5.10%","£121,971,000","£162,800,000","1,462","-£8,302,800"],
+["University of Westminster","£101m-£999m","-3.94%","3.10%","0.34","1.29","56.77%","£118,684","5.77%","£15,000,000","192","0.42%","£216,377,000","£259,800,000","2,189","£1,091,160"],
+["University of Winchester","<£100m","-4.89%","-0.21%","0.50","2.23","56.57%","£111,437","10.26%","£8,200,000","180","3.25%","£80,906,000","£79,900,000","717","£2,596,750"],
+["University of Worcester","<£100m","1.28%","0.70%","0.38","1.37","61.57%","£89,507","3.16%","£3,100,000","64","-0.61%","£94,078,000","£98,100,000","1,096","-£598,410"],
+["York St John University","£101m-£999m","15.15%","10.75%","0.36","G.82","48.90%","£133,170","15.59%","£19,800,000","171","7,95%","£68,825,000","£127,000,000","954","£10,096,500"]
+       ];
+
+        let visibleColumns = [...headers];
+        let rowData = [];
+        let visibleInstitutions = [];
+        let customInstitutionsList = []; // Array keeping track of user's custom modal list
+        let sortColIndex = -1;
+        let sortAsc = true;
+        let quartileThresholds = {};
+        const lowerIsBetterMetrics = ["RCI", "MCR", "Staff costs %"];
+
+        // Core parsing
+        function parseForSort(val) {
+            if (val === undefined || val === null || val === '') return 0;
+            const ocrFixes = { '114': 1.14, '040': 0.40, '1141%': 11.41, '724%': 7.24, '£226.620': 226620, '£149.618': 149618, '£161.033': 161033, '1:09': 1.09, '9:42%': 9.42, '15,65%': 15.65, '7,95%': 7.95, '209.331': 209331, '£83.333': 83333 };
+            if (ocrFixes[val] !== undefined) return ocrFixes[val];
+
+            let str = String(val).trim().replace(/[><£%]/g, ''); 
+            if (str.includes('-') && !str.startsWith('-')) str = str.split(/(?<!^)-/)[0];
+            str = str.replace(/G\./g, '0.').replace(/:(\d{3})\b/g, '$1'); 
+            if (/,(\d{2})$/.test(str)) str = str.replace(/,(\d{2})$/, '.$1');
+            str = str.replace(/,/g, '').replace(/\s/g, ''); 
+            
+            let multiplier = 1;
+            if (str.toLowerCase().includes('bn')) { multiplier = 1e9; str = str.replace(/bn/i, ''); }
+            else if (str.toLowerCase().includes('m')) { multiplier = 1e6; str = str.replace(/m/i, ''); }
+            
+            let num = parseFloat(str.replace(/[a-zA-Z]/g, ''));
+            return isNaN(num) ? val : num * multiplier;
+        }
+
+        // Augment raw rows
+        function calculateDerivedColumns(rawRowArray) {
+            return rawRowArray.map(row => {
+                const income2025 = parseForSort(row[13]); 
+                const incomeFTE = parseForSort(row[7]);   
+                const surplusPct = parseForSort(row[11]); 
+                
+                let fte = incomeFTE > 0 ? Math.round(income2025 / incomeFTE) : 0;
+                let surplus = income2025 > 0 ? Math.round(income2025 * (surplusPct / 100)) : 0;
+                
+                let cleanRow = row.slice(0, baseHeaders.length);
+                return [
+                    ...cleanRow, 
+                    fte.toLocaleString('en-GB'), 
+                    (surplus < 0 ? '-' : '') + '£' + Math.abs(surplus).toLocaleString('en-GB')
+                ];
+            });
+        }
+
+        // Dynamic quartile calculation based on full dataset
+        function getPercentile(data, p) {
+            if (data.length === 0) return 0;
+            const index = (data.length - 1) * p;
+            const lower = Math.floor(index);
+            const upper = Math.ceil(index);
+            const weight = index % 1;
+            if (lower === upper) return data[lower];
+            return data[lower] * (1 - weight) + data[upper] * weight;
+        }
+
+        function precalculateQuartiles() {
+            quartileThresholds = {};
+            headers.forEach((header, idx) => {
+                if (idx < 2) return; // Skip Institution and Income Category
+                let values = rowData.map(row => parseForSort(row[idx])).filter(v => v !== null && !isNaN(v));
+                if (values.length === 0) return;
+                values.sort((a, b) => a - b);
+                quartileThresholds[header] = {
+                    p25: getPercentile(values, 0.25),
+                    p50: getPercentile(values, 0.50),
+                    p75: getPercentile(values, 0.75)
+                };
+            });
+        }
+
+        function getQuartileClass(header, rawValue) {
+            let val = parseForSort(rawValue);
+            if (val === null || isNaN(val) || val === '') return '';
+            
+            const thresholds = quartileThresholds[header];
+            if (!thresholds) return ''; // Fallback if no data
+
+            if (lowerIsBetterMetrics.includes(header)) {
+                if (val <= thresholds.p25) return 'q-1'; // Green
+                if (val <= thresholds.p50) return 'q-2'; // Yellow
+                if (val <= thresholds.p75) return 'q-3'; // Orange
+                return 'q-4'; // Red
+            } else {
+                if (val >= thresholds.p75) return 'q-1'; // Green
+                if (val >= thresholds.p50) return 'q-2'; // Yellow
+                if (val >= thresholds.p25) return 'q-3'; // Orange
+                return 'q-4'; // Red
+            }
+        }
+
+        // Logic to categorize sustainable growth based on quartiles of core growth measures
+        function getSustainableGrowthCategory(row) {
+            // Core Sustainable Growth Measures
+            const yagoIdx = baseHeaders.indexOf("YAGO Growth");
+            const compIdx = baseHeaders.indexOf("Compound Growth");
+            const surplusIdx = baseHeaders.indexOf("Surplus % income");
+
+            const q1 = getQuartileClass("YAGO Growth", row[yagoIdx]);
+            const q2 = getQuartileClass("Compound Growth", row[compIdx]);
+            const q3 = getQuartileClass("Surplus % income", row[surplusIdx]);
+
+            // Map standard quartile classes to rank numbers (1: Green, 2: Yellow, 3: Orange, 4: Red)
+            const classToRank = { 'q-1': 1, 'q-2': 2, 'q-3': 3, 'q-4': 4, '': 4 };
+            const ranks = [classToRank[q1], classToRank[q2], classToRank[q3]];
+
+            let counts = {1:0, 2:0, 3:0, 4:0};
+            ranks.forEach(r => counts[r]++);
+
+            let categoryRank = 4;
+            if (counts[1] >= 2) categoryRank = 1;
+            else if (counts[2] >= 2) categoryRank = 2;
+            else if (counts[3] >= 2) categoryRank = 3;
+            else if (counts[4] >= 2) categoryRank = 4;
+            else {
+                // Three different colours -> Category based on the middle of the three quartiles present
+                ranks.sort((a,b) => a - b);
+                categoryRank = ranks[1];
+            }
+
+            const rankToCat = {1: "First category", 2: "Second category", 3: "Third category", 4: "Fourth category"};
+            return rankToCat[categoryRank];
+        }
+
+        // Dropdown Filtering Logic
+        function applyFilters() {
+            const typeFilter = document.getElementById('filterType').value;
+            const incomeFilter = document.getElementById('filterIncome').value;
+            const growthFilter = document.getElementById('filterGrowth').value;
+
+            // Manage Custom List UI button
+            document.getElementById('editCustomListBtn').style.display = typeFilter === 'Custom' ? 'inline-block' : 'none';
+
+            let filteredInstitutions = rowData.filter(row => {
+                const inst = row[0];
+                const income = row[1];
+                const growthCat = getSustainableGrowthCategory(row);
+
+                // Type Filter Check
+                if (typeFilter === 'Russell Group' && !russellGroupList.includes(inst)) return false;
+                if (typeFilter === 'Non-Russell Group' && russellGroupList.includes(inst)) return false;
+                if (typeFilter === 'Custom' && !customInstitutionsList.includes(inst)) return false;
+
+                // Income Filter Check
+                if (incomeFilter !== 'All' && income !== incomeFilter) return false;
+
+                // Growth Category Filter Check
+                if (growthFilter !== 'All' && growthCat !== growthFilter) return false;
+
+                return true;
+            });
+
+            visibleInstitutions = filteredInstitutions.map(r => r[0]);
+            sortColIndex = -1; // Reset sorting context to prevent visual bugs when data completely shifts
+            renderTable();
+        }
+
+        function sortData() {
+            let filteredData = rowData.filter(row => visibleInstitutions.includes(row[0]));
+            if (sortColIndex === -1) return filteredData;
+            return [...filteredData].sort((a, b) => {
+                let numA = parseForSort(a[sortColIndex]);
+                let numB = parseForSort(b[sortColIndex]);
+                if (typeof numA === 'number' && typeof numB === 'number') return sortAsc ? numA - numB : numB - numA;
+                return sortAsc ? String(a[sortColIndex]).localeCompare(String(b[sortColIndex])) : String(b[sortColIndex]).localeCompare(String(a[sortColIndex]));
+            });
+        }
+
+        function handleSort(index) {
+            if (sortColIndex === index) { sortAsc = !sortAsc; } 
+            else { sortColIndex = index; sortAsc = true; }
+            renderTable();
+        }
+
+        // Full Rendering Function
+        function renderTable() {
+            const head = document.getElementById('dataHead');
+            const body = document.getElementById('dataBody');
+            head.innerHTML = ''; 
+            body.innerHTML = '';
+
+            let sortedData = sortData();
+
+            // Render Header Row
+            const trHead = document.createElement('tr');
+            headers.forEach((header, idx) => {
+                if (visibleColumns.includes(header)) {
+                    const th = document.createElement('th');
+                    
+                    const headerText = document.createElement('span');
+                    headerText.textContent = header;
+                    th.appendChild(headerText);
+                    
+                    const infoIcon = document.createElement('span');
+                    infoIcon.textContent = ' ⓘ';
+                    infoIcon.className = 'info-icon';
+                    infoIcon.title = 'Click for definition';
+                    infoIcon.onclick = (e) => {
+                        e.stopPropagation(); 
+                        showExplainer(header);
+                    };
+                    th.appendChild(infoIcon);
+
+                    if (sortColIndex === idx) th.className = sortAsc ? 'sort-asc' : 'sort-desc';
+                    th.onclick = () => handleSort(idx);
+                    
+                    trHead.appendChild(th);
+                }
+            });
+            head.appendChild(trHead);
+
+            // Render Data Rows
+            sortedData.forEach(row => {
+                const tr = document.createElement('tr');
+                headers.forEach((header, idx) => {
+                    if (visibleColumns.includes(header)) {
+                        const td = document.createElement('td');
+                        td.textContent = row[idx];
+                        
+                        const colourClass = getQuartileClass(header, row[idx]);
+                        if (colourClass) td.classList.add(colourClass);
+                        
+                        tr.appendChild(td);
+                    }
+                });
+                body.appendChild(tr);
+            });
+        }
+
+        function showExplainer(metricName) {
+            document.getElementById('explainerTitle').textContent = metricName;
+            document.getElementById('explainerText').textContent = metricExplainers[metricName] || "No explanation available for this metric.";
+            document.getElementById('explainerModal').classList.add('show');
+        }
+
+        function renderModalRows() {
+            const rowSelectors = document.getElementById('rowSelectors');
+            rowSelectors.innerHTML = '';
+            let sortedInstitutions = [...rowData].sort((a,b) => a[0].localeCompare(b[0]));
+            
+            sortedInstitutions.forEach(row => {
+                const instName = row[0];
+                const label = document.createElement('label');
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.className = 'row-cb'; 
+                cb.checked = customInstitutionsList.includes(instName);
+                cb.value = instName;
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(instName));
+                rowSelectors.appendChild(label);
+            });
+        }
+
+        function downloadCsv() {
+            let csvContent = headers.filter(h => visibleColumns.includes(h)).map(h => `"${h}"`).join(",") + "\r\n";
+            let dataToExport = sortData();
+            dataToExport.forEach(row => {
+                let rowString = row.filter((_, idx) => visibleColumns.includes(headers[idx]))
+                                   .map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",");
+                csvContent += rowString + "\r\n";
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "heis_data_export.csv";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function handleCsvUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => processCsvText(e.target.result);
+                reader.readAsText(file);
+            });
+            event.target.value = '';
+        }
+
+        function processCsvText(text) {
+            let parsedRows = [];
+            let row = [];
+            let inQuotes = false;
+            let val = '';
+            
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                if (char === '"') {
+                    if (inQuotes && text[i+1] === '"') { val += '"'; i++; } else { inQuotes = !inQuotes; }
+                } else if (char === ',' && !inQuotes) {
+                    row.push(val.trim()); val = '';
+                } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                    if (char === '\r' && text[i+1] === '\n') i++; 
+                    row.push(val.trim());
+                    if (row.some(c => c !== '')) parsedRows.push(row);
+                    row = []; val = '';
+                } else {
+                    val += char;
+                }
+            }
+            if (val || row.length > 0) {
+                row.push(val.trim());
+                if (row.some(c => c !== '')) parsedRows.push(row);
+            }
+
+            if (parsedRows.length === 0) return;
+            let startIndex = (parsedRows[0][0] && parsedRows[0][0].toLowerCase().includes("institution")) ? 1 : 0;
+
+            let newRawRows = [];
+            for (let i = startIndex; i < parsedRows.length; i++) {
+                let r = parsedRows[i];
+                while (r.length < baseHeaders.length) r.push('');
+                newRawRows.push(r.slice(0, baseHeaders.length));
+            }
+
+            let newCalculatedRows = calculateDerivedColumns(newRawRows);
+            newCalculatedRows.forEach(newRow => {
+                const existingIndex = rowData.findIndex(r => r[0] === newRow[0]);
+                if (existingIndex > -1) { rowData[existingIndex] = newRow; } 
+                else { 
+                    rowData.push(newRow);
+                    // Add new items automatically to the custom list so they don't vanish if the user uploaded while on "Custom" mode
+                    customInstitutionsList.push(newRow[0]);
+                }
+            });
+
+            precalculateQuartiles(); // Recalculate quartiles for new full dataset
+            applyFilters();
+        }
+
+        // Setup Event Listeners
+        document.getElementById('toggleColumns').addEventListener('click', (e) => {
+            const selector = document.getElementById('columnSelectors');
+            selector.classList.toggle('open');
+            e.target.textContent = selector.classList.contains('open') ? 'Columns to Display ▲' : 'Columns to Display ▼';
+        });
+
+        const selectorDiv = document.getElementById('columnSelectors');
+        headers.forEach(h => {
+            const label = document.createElement('label');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = true;
+            cb.value = h;
+            cb.addEventListener('change', (e) => {
+                if (e.target.checked) { if (!visibleColumns.includes(h)) visibleColumns.push(h); } 
+                else { visibleColumns = visibleColumns.filter(c => c !== h); }
+                visibleColumns.sort((a, b) => headers.indexOf(a) - headers.indexOf(b));
+                renderTable();
+            });
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(h));
+            selectorDiv.appendChild(label);
+        });
+
+        // Filter Triggers
+        document.getElementById('filterType').addEventListener('change', applyFilters);
+        document.getElementById('filterIncome').addEventListener('change', applyFilters);
+        document.getElementById('filterGrowth').addEventListener('change', applyFilters);
+
+        // Actions
+        document.getElementById('downloadCsvBtn').addEventListener('click', downloadCsv);
+
+        // Modal Specifics
+        const rowModal = document.getElementById('rowModal');
+        document.getElementById('editCustomListBtn').addEventListener('click', () => { renderModalRows(); rowModal.classList.add('show'); });
+        document.getElementById('closeRowModal').addEventListener('click', () => rowModal.classList.remove('show'));
+        document.getElementById('selectAllBtn').addEventListener('click', () => document.querySelectorAll('.row-cb').forEach(cb => cb.checked = true));
+        document.getElementById('unselectAllBtn').addEventListener('click', () => document.querySelectorAll('.row-cb').forEach(cb => cb.checked = false));
+        document.getElementById('applyRowsBtn').addEventListener('click', () => {
+            customInstitutionsList = Array.from(document.querySelectorAll('.row-cb')).filter(cb => cb.checked).map(cb => cb.value);
+            rowModal.classList.remove('show');
+            // Ensure the dropdown shows Custom if they just modified the custom list
+            document.getElementById('filterType').value = 'Custom';
+            applyFilters();
+        });
+
+        const explainerModal = document.getElementById('explainerModal');
+        document.getElementById('closeExplainerModal').addEventListener('click', () => explainerModal.classList.remove('show'));
+        document.getElementById('okExplainerBtn').addEventListener('click', () => explainerModal.classList.remove('show'));
+
+        // Transpose toggle (Note: Simple visual transposition logic removed from render cycle to prioritise advanced complex filtering views, 
+        // but skeleton reserved if needed in future. The button alert informs user of this design trade-off).
+        document.getElementById('transposeBtn').addEventListener('click', () => {
+            alert("Transpose feature disabled to support advanced filtering grid constraints.");
+        });
+
+        // Initialize Data
+        rowData = calculateDerivedColumns(rawDataInputs);
+        customInstitutionsList = rowData.map(r => r[0]); // Initialise custom list as everything
+        precalculateQuartiles(); // Calculate quartiles dynamically across full dataset
+        applyFilters();
+
+    </script>
+</body>
+</html>
